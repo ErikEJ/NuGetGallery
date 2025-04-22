@@ -428,6 +428,52 @@ namespace NuGetGallery
             return package;
         }
 
+        public (IReadOnlyCollection<Package> Packages, long TotalDownloadCount, int PackageCount) FindPackagesByProfile(
+            User user,
+            int page,
+            int pageSize)
+        {
+            if (user == null)
+            {
+                throw new ArgumentNullException(nameof(user));
+            }
+
+            IQueryable<Package> packages = _packageRepository.GetAll()
+                .Where(p => p.PackageRegistration.Owners.Any(o => o.Key == user.Key));
+
+            var packageSummary = packages
+                .Where(p => p.IsLatestSemVer2)
+                .Include(p => p.PackageRegistration)
+                .GroupBy(r => 1)
+                .Select(g => new
+                {
+                    PackageCount = g.Sum(x => 1),
+                    DownloadCount = g.Sum(x => x.PackageRegistration.DownloadCount)
+                })
+                .FirstOrDefault();
+
+            var packageCount = packageSummary != null ? packageSummary.PackageCount : 0;
+            var downloadCount = packageSummary != null ? packageSummary.DownloadCount : 0;
+
+            packages = packages
+                .Where(p => p.Listed
+                    && p.PackageStatusKey == PackageStatus.Available);
+
+            packages = GetLatestVersion(packages);
+
+            return (packages
+                .OrderByDescending(p => p.PackageRegistration.DownloadCount)
+                .Skip((page-1) * pageSize)
+                .Take(pageSize)
+                .Include(p => p.PackageRegistration.Owners)
+                .Include(p => p.PackageRegistration.RequiredSigners)
+                .Include(p => p.PackageRegistration.Packages.Select(p => p.SupportedFrameworks))
+                .Include(p => p.PackageRegistration.Packages.Select(p => p.Deprecations))
+                .ToList(),
+                downloadCount,
+                packageCount);
+        }
+
         public IEnumerable<Package> FindPackagesByOwner(User user, bool includeUnlisted, bool includeVersions = false)
         {
             return GetPackagesForOwners(new[] { user.Key }, includeUnlisted, includeVersions);
