@@ -463,6 +463,7 @@ namespace NuGetGallery
 
             return (packages
                 .OrderByDescending(p => p.PackageRegistration.DownloadCount)
+                .ThenBy(p => p.PackageRegistration.Id)
                 .Skip((page-1) * pageSize)
                 .Take(pageSize)
                 .Include(p => p.PackageRegistration.Owners)
