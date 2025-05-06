@@ -504,20 +504,7 @@ namespace NuGetGallery
 
             if (!includeVersions)
             {
-                // Do a best effort of retrieving the latest versions. Note that UpdateIsLatest has had concurrency issues
-                // where sometimes packages no rows with IsLatest set. In this case, we'll just select the last inserted
-                // row (descending [Key]) as opposed to reading all rows into memory and sorting on NuGetVersion.
-                packages = packages
-                    .GroupBy(p => p.PackageRegistrationKey)
-                    .Select(g => g
-                        // order booleans desc so that true (1) comes first
-                        .OrderByDescending(p => p.IsLatestStableSemVer2)
-                        .ThenByDescending(p => p.IsLatestStable)
-                        .ThenByDescending(p => p.IsLatestSemVer2)
-                        .ThenByDescending(p => p.IsLatest)
-                        .ThenByDescending(p => p.Listed)
-                        .ThenByDescending(p => p.Key)
-                        .FirstOrDefault());
+                packages = GetLatestVersion(packages);
             }
 
             return packages
@@ -525,6 +512,25 @@ namespace NuGetGallery
                 .Include(p => p.PackageRegistration.Owners)
                 .Include(p => p.PackageRegistration.RequiredSigners)
                 .ToList();
+        }
+
+        private static IQueryable<Package> GetLatestVersion(IQueryable<Package> packages)
+        {
+            // Do a best effort of retrieving the latest versions. Note that UpdateIsLatest has had concurrency issues
+            // where sometimes packages no rows with IsLatest set. In this case, we'll just select the last inserted
+            // row (descending [Key]) as opposed to reading all rows into memory and sorting on NuGetVersion.
+            packages = packages
+                .GroupBy(p => p.PackageRegistrationKey)
+                .Select(g => g
+                    // order booleans desc so that true (1) comes first
+                    .OrderByDescending(p => p.IsLatestStableSemVer2)
+                    .ThenByDescending(p => p.IsLatestStable)
+                    .ThenByDescending(p => p.IsLatestSemVer2)
+                    .ThenByDescending(p => p.IsLatest)
+                    .ThenByDescending(p => p.Listed)
+                    .ThenByDescending(p => p.Key)
+                    .FirstOrDefault());
+            return packages;
         }
 
         public IQueryable<PackageRegistration> FindPackageRegistrationsByOwner(User user)
