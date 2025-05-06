@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -468,8 +468,6 @@ namespace NuGetGallery
                 .Take(pageSize)
                 .Include(p => p.PackageRegistration.Owners)
                 .Include(p => p.PackageRegistration.RequiredSigners)
-                .Include(p => p.PackageRegistration.Packages.Select(p => p.SupportedFrameworks))
-                .Include(p => p.PackageRegistration.Packages.Select(p => p.Deprecations))
                 .ToList(),
                 downloadCount,
                 packageCount);
